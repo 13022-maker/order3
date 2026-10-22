@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高中班級午餐訂餐系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 圖示庫 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Microsoft JhengHei', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                        },
+                        accent: {
+                            500: '#f97316',
+                            600: '#ea580c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 列印專用樣式優化 */
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; color: black !important; font-size: 12pt; }
+            .card-shadow { box-shadow: none !important; border: 1px solid #ccc !important; }
+            .break-inside-avoid { page-break-inside: avoid; }
+        }
+        /* 自訂滾動條 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+
+    <!-- 頂部導覽與班級資訊 Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-brand-500/20">
+                    <i class="fa-solid fa-utensils"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800 leading-tight">高中班級午餐訂餐系統</h1>
+                    <p class="text-xs text-slate-500">午餐小老師專用系統</p>
+                </div>
+            </div>
+
+            <!-- 班級與小老師資訊編輯區 -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <div class="flex items-center bg-slate-100 rounded-lg p-1 text-xs sm:text-sm">
+                    <i class="fa-solid fa-users text-slate-400 ml-2 mr-1"></i>
+                    <input type="text" id="classNameInput" value="高三 2 班" class="bg-transparent border-0 focus:ring-0 text-slate-700 font-semibold w-20 sm:w-24 text-center focus:bg-white rounded transition" title="點擊修改班級">
+                    <span class="text-slate-300">|</span>
+                    <i class="fa-solid fa-user-pen text-slate-400 ml-2 mr-1"></i>
+                    <input type="text" id="teacherInput" value="張小明" class="bg-transparent border-0 focus:ring-0 text-slate-700 font-semibold w-16 sm:w-20 text-center focus:bg-white rounded transition" placeholder="小老師" title="點擊修改小老師姓名">
+                </div>
+                <div class="hidden md:flex items-center text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
+                    <i class="fa-regular fa-calendar-check mr-1.5 text-brand-600"></i>
+                    <span id="currentDate">2026/10/21</span>
+                </div>
+                <button onclick="confirmResetAll()" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="重置今天全班資料">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區域 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- 1. 頂部菜單卡片展示 -->
+        <section class="no-print">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-base font-bold text-slate-700 flex items-center">
+                    <i class="fa-solid fa-book-open text-brand-600 mr-2"></i> 今日預設菜單 (點擊菜單卡片可直接填入編號)
+                </h2>
+                <span class="text-xs text-slate-400">共 5 項特選餐點</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" id="menuCardsContainer">
+                <!-- 由 JavaScript 動態繪製菜單 -->
+            </div>
+        </section>
+
+        <!-- 2. 控制台：快速登記表單與座位概況 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+
+            <!-- 快速訂餐登記表單 (鍵盤流導向) -->
+            <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <h3 class="font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-bolt text-accent-500 mr-2"></i> 快速輸入登記
+                        </h3>
+                        <span class="text-xs font-medium bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-200">
+                            輸入座號 0 = 結算
+                        </span>
+                    </div>
+
+                    <form id="orderForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                        <div>
+                            <label for="seatInput" class="block text-xs font-semibold text-slate-600 mb-1">
+                                座號 <span class="text-slate-400 font-normal">(1 ~ 50，輸入 0 可直接結算)</span>
+                            </label>
+                            <div class="relative">
+                                <input type="number" id="seatInput" min="0" max="50" placeholder="例如: 15" required
+                                    class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-semibold text-lg transition">
+                                <i class="fa-solid fa-id-card text-slate-400 absolute left-3.5 top-3.5"></i>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="col-span-2">
+                                <label for="menuItemSelect" class="block text-xs font-semibold text-slate-600 mb-1">
+                                    餐點編號 / 選項 <span class="text-slate-400 font-normal">(1 ~ 5)</span>
+                                </label>
+                                <div class="relative">
+                                    <select id="menuItemSelect" required
+                                        class="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium text-slate-800 transition appearance-none">
+                                        <!-- 動態加載 -->
+                                    </select>
+                                    <i class="fa-solid fa-bowl-food text-slate-400 absolute left-3.5 top-3.5"></i>
+                                    <i class="fa-solid fa-chevron-down text-slate-400 absolute right-3 top-3.5 text-xs pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="qtyInput" class="block text-xs font-semibold text-slate-600 mb-1">數量</label>
+                                <input type="number" id="qtyInput" min="1" max="10" value="1" required
+                                    class="w-full text-center py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-500 font-semibold transition">
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex space-x-2">
+                            <button type="submit" 
+                                class="flex-1 bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white font-semibold py-2.5 rounded-xl transition shadow-md shadow-brand-600/20 flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>登記餐點 (Enter)</span>
+                            </button>
+                            <button type="button" onclick="triggerCheckout()"
+                                class="bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-amber-500/20 flex items-center justify-center space-x-1" title="輸入座號0或點擊完成登記">
+                                <i class="fa-solid fa-calculator"></i>
+                                <span>結算 (0)</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 鍵盤快捷提示 -->
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                    <span><i class="fa-regular fa-keyboard mr-1"></i> 按 <kbd class="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200 text-slate-600">Enter</kbd> 自動跳轉下個輸入框</span>
+                    <button type="button" onclick="clearForm()" class="hover:text-slate-600 underline">重置表單</button>
+                </div>
+            </div>
+
+            <!-- 全班 1~50 座號即時網格 -->
+            <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                    <div class="flex items-center space-x-2">
+                        <h3 class="font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-border-all text-brand-600 mr-2"></i> 全班座號訂餐狀態網格
+                        </h3>
+                        <span id="gridOrderedBadge" class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">
+                            已訂: 0 / 50
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-3 text-xs">
+                        <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1.5"></span>已訂餐</span>
+                        <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-slate-200 mr-1.5"></span>未訂餐</span>
+                    </div>
+                </div>
+
+                <!-- 1~50 座號網格區 -->
+                <div class="grid grid-cols-5 sm:grid-cols-10 gap-1.5 max-h-[280px] overflow-y-auto p-1" id="seatGridContainer">
+                    <!-- 由 JavaScript 動態生成 50 個座號按鈕 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 結算報表與統計分析 (主報表卡片) -->
+        <section id="checkoutReportSection" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 sm:p-6 space-y-6">
+
+            <!-- 報表頂部工具列 (列印時隱藏工具列按鈕，保留標題) -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="bg-brand-100 text-brand-700 text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+                            Lunch Order Report
+                        </span>
+                        <h2 class="text-xl font-bold text-slate-800">全班訂餐統計結算報表</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1 print-only" id="printHeaderMeta">
+                        班級：高三 2 班 | 小老師：張小明 | 列印時間：2026/10/21
+                    </p>
+                </div>
+
+                <!-- 動作操作按鈕組 -->
+                <div class="flex flex-wrap items-center gap-2 no-print">
+                    <button onclick="copyGroupMessage()" 
+                        class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition shadow-sm flex items-center">
+                        <i class="fa-regular fa-copy mr-1.5"></i> 複製班群文字
+                    </button>
+                    <button onclick="exportCSV()" 
+                        class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition shadow-sm flex items-center">
+                        <i class="fa-solid fa-file-csv mr-1.5"></i> 匯出 CSV
+                    </button>
+                    <button onclick="window.print()" 
+                        class="bg-slate-700 hover:bg-slate-800 active:scale-95 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition shadow-sm flex items-center">
+                        <i class="fa-solid fa-print mr-1.5"></i> 列印報表
+                    </button>
+                </div>
+            </div>
+
+            <!-- 數據總覽 KPI 卡片 -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p class="text-xs text-slate-500 font-medium">全班總金額</p>
+                    <p class="text-2xl sm:text-3xl font-extrabold text-brand-600 mt-1" id="statTotalAmount">$0</p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p class="text-xs text-slate-500 font-medium">訂餐總筆數</p>
+                    <p class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1" id="statTotalCount">0 <span class="text-xs font-normal text-slate-400">份</span></p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p class="text-xs text-slate-500 font-medium">訂餐人數 / 全班</p>
+                    <p class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1" id="statOrderedStudents">0 <span class="text-xs font-normal text-slate-400">/ 50 人</span></p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p class="text-xs text-slate-500 font-medium">未訂餐人數</p>
+                    <p class="text-2xl sm:text-3xl font-extrabold text-rose-500 mt-1" id="statUnorderedCount">50 <span class="text-xs font-normal text-slate-400">人</span></p>
+                </div>
+            </div>
+
+            <!-- 品項統計與未訂餐座號 -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                <!-- 品項彙整統計表 (向餐廳下單使用) -->
+                <div class="md:col-span-7 space-y-3">
+                    <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                        <i class="fa-solid fa-list-check text-brand-600 mr-2"></i> 各品項訂購數量與小計 (店家下單)
+                    </h3>
+                    <div class="overflow-hidden rounded-xl border border-slate-200">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-100 text-slate-600 font-semibold text-xs border-b border-slate-200">
+                                <tr>
+                                    <th class="py-2.5 px-4">代號 / 餐點名稱</th>
+                                    <th class="py-2.5 px-4 text-center">單價</th>
+                                    <th class="py-2.5 px-4 text-center">訂購數量</th>
+                                    <th class="py-2.5 px-4 text-right">金額小計</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summaryTableBody" class="divide-y divide-slate-100">
+                                <!-- 動態渲染 -->
+                            </tbody>
+                            <tfoot class="bg-slate-50 font-bold text-slate-800 border-t border-slate-200">
+                                <tr>
+                                    <td colspan="2" class="py-3 px-4">合計 (Total)</td>
+                                    <td class="py-3 px-4 text-center text-brand-700" id="tableTotalQty">0 份</td>
+                                    <td class="py-3 px-4 text-right text-brand-700" id="tableTotalSum">$0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 未訂餐座號清單與狀態卡片 -->
+                <div class="md:col-span-5 space-y-3">
+                    <h3 class="font-bold text-slate-800 text-sm flex items-center justify-between">
+                        <span class="flex items-center">
+                            <i class="fa-solid fa-user-xmark text-rose-500 mr-2"></i> 未訂餐座號清單
+                        </span>
+                        <span class="text-xs text-slate-400 font-normal">方便點名催促</span>
+                    </h3>
+                    <div class="bg-rose-50/50 border border-rose-100 p-4 rounded-xl min-h-[160px]">
+                        <div id="unorderedSeatsList" class="flex flex-wrap gap-1.5">
+                            <!-- 動態填入 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 詳細訂單紀錄列表 (支援點擊刪除/修改) -->
+            <div class="space-y-3 pt-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-slate-800 text-sm flex items-center">
+                        <i class="fa-solid fa-receipt text-slate-600 mr-2"></i> 班級個別訂單明細
+                    </h3>
+                    <div class="relative no-print">
+                        <input type="text" id="searchSeatInput" oninput="renderOrdersTable()" placeholder="搜尋座號..." 
+                            class="pl-8 pr-3 py-1 bg-slate-100 border border-slate-200 text-xs rounded-lg focus:bg-white focus:ring-1 focus:ring-brand-500">
+                        <i class="fa-solid fa-search text-slate-400 absolute left-2.5 top-2 text-xs"></i>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-100 text-slate-600 font-semibold text-xs border-b border-slate-200">
+                            <tr>
+                                <th class="py-2.5 px-4 w-20">座號</th>
+                                <th class="py-2.5 px-4">訂購餐點</th>
+                                <th class="py-2.5 px-4 text-center w-24">單價</th>
+                                <th class="py-2.5 px-4 text-center w-20">數量</th>
+                                <th class="py-2.5 px-4 text-right w-24">小計</th>
+                                <th class="py-2.5 px-4 text-center w-20 no-print">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersDetailTableBody" class="divide-y divide-slate-100">
+                            <!-- 動態呈現 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- 頁尾 footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 no-print">
+        <p>高中班級午餐訂餐系統 SPA &copy; 2026 | 原生 JavaScript + HTML5 + CSS3 獨立運作</p>
+    </footer>
+
+    <!-- Toast 溫馨訊息提示元件 -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div id="toastContent" class="flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg text-white font-medium text-sm">
+            <i id="toastIcon" class="fa-solid fa-circle-check"></i>
+            <span id="toastMessage">提示訊息</span>
+        </div>
+    </div>
+
+    <!-- 自訂 Modal 對話框 (代替原生 alert & confirm) -->
+    <div id="modalBackdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div id="modalBox" class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 transition-transform duration-200 mx-4">
+            <div class="text-center">
+                <div id="modalIconContainer" class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3 text-xl">
+                    <i id="modalIcon" class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 id="modalTitle" class="text-lg font-bold text-slate-800">確認操作</h3>
+                <p id="modalDescription" class="text-xs text-slate-500 mt-2">確定要執行這項操作嗎？</p>
+            </div>
+            <div class="mt-6 flex space-x-3">
+                <button id="modalCancelBtn" onclick="closeModal()" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+                    取消
+                </button>
+                <button id="modalConfirmBtn" class="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl transition shadow-md shadow-rose-600/20">
+                    確定重置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 應用程式核心邏輯 -->
+    <script>
+        /**
+         * 1. 系統預設菜單資料庫 (符合需求 5 項)
+         */
+        const MENU_ITEMS = [
+            { id: 1, name: "排骨便當", price: 80, icon: "fa-drumstick-bite", color: "bg-amber-500", textBg: "bg-amber-50 text-amber-700 border-amber-200" },
+            { id: 2, name: "雞腿便當", price: 85, icon: "fa-utensils", color: "bg-orange-500", textBg: "bg-orange-50 text-orange-700 border-orange-200" },
+            { id: 3, name: "素食便當", price: 70, icon: "fa-leaf", color: "bg-emerald-500", textBg: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+            { id: 4, name: "滷肉飯", price: 55, icon: "fa-bowl-rice", color: "bg-rose-500", textBg: "bg-rose-50 text-rose-700 border-rose-200" },
+            { id: 5, name: "貢丸湯", price: 20, icon: "fa-mug-hot", color: "bg-teal-500", textBg: "bg-teal-50 text-teal-700 border-teal-200" }
+        ];
+
+        /**
+         * 2. 全局狀態 (State)
+         */
+        let orders = []; // 儲存訂單 [{ id, seatNumber, itemId, qty, timestamp }]
+        let confirmCallback = null;
+
+        /**
+         * 3. 初始化載入頁面
+         */
+        window.addEventListener('DOMContentLoaded', () => {
+            initDate();
+            loadFromLocalStorage();
+            renderMenuCards();
+            renderMenuSelectOptions();
+            renderSeatGrid();
+            renderAllReports();
+            setupFormAutoJump();
+        });
+
+        // 設定目前日期
+        function initDate() {
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            document.getElementById('currentDate').innerText = dateStr;
+            updatePrintHeaderMeta();
+
+            // 監聽班級與老師輸入變更
+            document.getElementById('classNameInput').addEventListener('input', updatePrintHeaderMeta);
+            document.getElementById('teacherInput').addEventListener('input', updatePrintHeaderMeta);
+        }
+
+        function updatePrintHeaderMeta() {
+            const cls = document.getElementById('classNameInput').value || '未設定';
+            const teacher = document.getElementById('teacherInput').value || '未設定';
+            const dateStr = document.getElementById('currentDate').innerText;
+            document.getElementById('printHeaderMeta').innerText = `班級：${cls} | 小老師：${teacher} | 列印時間：${dateStr}`;
+        }
+
+        /**
+         * 4. 繪製菜單卡片
+         */
+        function renderMenuCards() {
+            const container = document.getElementById('menuCardsContainer');
+            container.innerHTML = MENU_ITEMS.map(item => `
+                <div onclick="quickSelectMenu(${item.id})" 
+                    class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm hover:border-brand-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-6 h-6 rounded-lg ${item.color} text-white font-bold text-xs flex items-center justify-center">
+                            ${item.id}
+                        </span>
+                        <i class="fa-solid ${item.icon} text-slate-300 group-hover:text-brand-500 transition"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm group-hover:text-brand-600 transition">${item.name}</h4>
+                        <p class="text-brand-600 font-extrabold text-base mt-0.5">$${item.price}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 下拉選單選項目
+        function renderMenuSelectOptions() {
+            const select = document.getElementById('menuItemSelect');
+            select.innerHTML = MENU_ITEMS.map(item => `
+                <option value="${item.id}">[ ${item.id} ] ${item.name} ($${item.price})</option>
+            `).join('');
+        }
+
+        /**
+         * 5. 繪製 1 ~ 50 座號狀態網格
+         */
+        function renderSeatGrid() {
+            const container = document.getElementById('seatGridContainer');
+            let html = '';
+
+            // 整理每個座號訂了哪些餐
+            const seatMap = {};
+            orders.forEach(ord => {
+                if (!seatMap[ord.seatNumber]) seatMap[ord.seatNumber] = [];
+                const item = MENU_ITEMS.find(m => m.id === ord.itemId);
+                seatMap[ord.seatNumber].push(item ? item.name : '餐點');
+            });
+
+            for (let seat = 1; seat <= 50; seat++) {
+                const isOrdered = !!seatMap[seat];
+                const itemsText = isOrdered ? seatMap[seat].join(', ') : '未訂餐';
+
+                if (isOrdered) {
+                    html += `
+                        <button type="button" onclick="quickFillSeat(${seat})" title="座號 ${seat}：${itemsText} (點擊可快捷編輯)"
+                            class="p-2 rounded-lg bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 transition shadow-sm flex flex-col items-center justify-center relative group">
+                            <span>${seat}</span>
+                            <span class="text-[9px] font-normal truncate max-w-full opacity-90">${seatMap[seat][0]}</span>
+                        </button>
+                    `;
+                } else {
+                    html += `
+                        <button type="button" onclick="quickFillSeat(${seat})" title="座號 ${seat}：未訂餐 (點擊可直接登記)"
+                            class="p-2 rounded-lg bg-slate-100 text-slate-600 font-semibold text-xs hover:bg-slate-200 hover:text-slate-900 transition flex flex-col items-center justify-center">
+                            <span>${seat}</span>
+                            <span class="text-[9px] font-normal text-slate-400">空</span>
+                        </button>
+                    `;
+                }
+            }
+
+            container.innerHTML = html;
+
+            // 更新網格頂部計數徽章
+            const orderedSeatsCount = Object.keys(seatMap).length;
+            document.getElementById('gridOrderedBadge').innerText = `已訂: ${orderedSeatsCount} / 50 人`;
+        }
+
+        /**
+         * 6. 核心：表單輸入與驗證邏輯 (需求 2 & 3)
+         */
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const seatInput = document.getElementById('seatInput');
+            const menuSelect = document.getElementById('menuItemSelect');
+            const qtyInput = document.getElementById('qtyInput');
+
+            const seatVal = parseInt(seatInput.value, 10);
+            const itemIdVal = parseInt(menuSelect.value, 10);
+            const qtyVal = parseInt(qtyInput.value, 10) || 1;
+
+            // [驗證] 特殊座號 0：代表觸發結算
+            if (seatVal === 0) {
+                triggerCheckout();
+                seatInput.value = '';
+                return;
+            }
+
+            // [驗證] 座號範圍 1~50
+            if (isNaN(seatVal) || seatVal < 1 || seatVal > 50) {
+                showToast("座號不合法！請輸入 1~50 之數字 (或 0 結算)", "error");
+                seatInput.value = '';
+                seatInput.focus();
+                return;
+            }
+
+            // [驗證] 餐點編號 1~5
+            const menuItem = MENU_ITEMS.find(m => m.id === itemIdVal);
+            if (!menuItem) {
+                showToast("餐點編號無效！請選擇 1~5 號菜單", "error");
+                menuSelect.focus();
+                return;
+            }
+
+            // 檢查該座號是否已有訂單，若有則覆蓋或追加 (這裡預設為更新/覆蓋該同學訂餐，以符一般點餐習慣)
+            const existingIndex = orders.findIndex(o => o.seatNumber === seatVal);
+            if (existingIndex !== -1) {
+                orders[existingIndex] = {
+                    id: orders[existingIndex].id,
+                    seatNumber: seatVal,
+                    itemId: itemIdVal,
+                    qty: qtyVal,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                showToast(`已更新座號 [${seatVal}] 的訂單為：${menuItem.name}`, "info");
+            } else {
+                orders.push({
+                    id: Date.now(),
+                    seatNumber: seatVal,
+                    itemId: itemIdVal,
+                    qty: qtyVal,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+                showToast(`已登記座號 [${seatVal}]：${menuItem.name}`, "success");
+            }
+
+            // 儲存與重新繪製
+            saveToLocalStorage();
+            renderSeatGrid();
+            renderAllReports();
+
+            // 輸入結束後，流暢切換回座號輸入框準備下一位
+            seatInput.value = '';
+            seatInput.focus();
+        }
+
+        // 快捷選擇卡片帶入餐點
+        function quickSelectMenu(itemId) {
+            document.getElementById('menuItemSelect').value = itemId;
+            document.getElementById('seatInput').focus();
+            showToast(`已選取餐點：${MENU_ITEMS.find(m=>m.id===itemId).name}，請輸入座號`, "info");
+        }
+
+        // 點擊網格座號填入
+        function quickFillSeat(seatNum) {
+            const seatInput = document.getElementById('seatInput');
+            seatInput.value = seatNum;
+
+            // 如果該座號已訂餐，自動帶入其餐點
+            const existing = orders.find(o => o.seatNumber === seatNum);
+            if (existing) {
+                document.getElementById('menuItemSelect').value = existing.itemId;
+                document.getElementById('qtyInput').value = existing.qty;
+            }
+
+            seatInput.focus();
+        }
+
+        // 清空表單
+        function clearForm() {
+            document.getElementById('seatInput').value = '';
+            document.getElementById('qtyInput').value = '1';
+            document.getElementById('seatInput').focus();
+        }
+
+        // 表單鍵盤自動跳格 (按下 Enter 快捷體驗)
+        function setupFormAutoJump() {
+            const seatInput = document.getElementById('seatInput');
+            const menuSelect = document.getElementById('menuItemSelect');
+
+            seatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const val = parseInt(seatInput.value, 10);
+                    if (val === 0) {
+                        e.preventDefault();
+                        triggerCheckout();
+                    }
+                }
+            });
+        }
+
+        // 觸發結算 (座號 0 或點擊結算按鈕)
+        function triggerCheckout() {
+            showToast("已完成登記！跳轉至結算報表", "success");
+            document.getElementById('checkoutReportSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        /**
+         * 7. 結算報表計算與渲染 (需求 4)
+         */
+        function renderAllReports() {
+            // A. 計算品項統計與總金額
+            let totalAmount = 0;
+            let totalCount = 0;
+
+            const summaryMap = {};
+            MENU_ITEMS.forEach(item => {
+                summaryMap[item.id] = { ...item, count: 0, subtotal: 0 };
+            });
+
+            orders.forEach(ord => {
+                const item = summaryMap[ord.itemId];
+                if (item) {
+                    item.count += ord.qty;
+                    item.subtotal += ord.qty * item.price;
+                    totalAmount += ord.qty * item.price;
+                    totalCount += ord.qty;
+                }
+            });
+
+            // 已訂餐同學的獨特座號數
+            const orderedSeatsSet = new Set(orders.map(o => o.seatNumber));
+            const orderedStudentsCount = orderedSeatsSet.size;
+            const unorderedStudentsCount = 50 - orderedStudentsCount;
+
+            // B. 更新 KPI 卡片數字
+            document.getElementById('statTotalAmount').innerText = `$${totalAmount.toLocaleString()}`;
+            document.getElementById('statTotalCount').innerHTML = `${totalCount} <span class="text-xs font-normal text-slate-400">份</span>`;
+            document.getElementById('statOrderedStudents').innerHTML = `${orderedStudentsCount} <span class="text-xs font-normal text-slate-400">/ 50 人</span>`;
+            document.getElementById('statUnorderedCount').innerHTML = `${unorderedStudentsCount} <span class="text-xs font-normal text-slate-400">人</span>`;
+
+            // C. 繪製各品項統計表格
+            const summaryTableBody = document.getElementById('summaryTableBody');
+            summaryTableBody.innerHTML = MENU_ITEMS.map(item => {
+                const stat = summaryMap[item.id];
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-2.5 px-4 font-semibold text-slate-800 flex items-center space-x-2">
+                            <span class="w-5 h-5 rounded ${item.color} text-white font-bold text-xs flex items-center justify-center">${item.id}</span>
+                            <span>${item.name}</span>
+                        </td>
+                        <td class="py-2.5 px-4 text-center text-slate-500">$${item.price}</td>
+                        <td class="py-2.5 px-4 text-center font-bold text-slate-800">${stat.count} 份</td>
+                        <td class="py-2.5 px-4 text-right font-extrabold text-slate-800">$${stat.subtotal.toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('tableTotalQty').innerText = `${totalCount} 份`;
+            document.getElementById('tableTotalSum').innerText = `$${totalAmount.toLocaleString()}`;
+
+            // D. 繪製未訂餐座號清單
+            const unorderedList = document.getElementById('unorderedSeatsList');
+            const unorderedSeats = [];
+            for (let seat = 1; seat <= 50; seat++) {
+                if (!orderedSeatsSet.has(seat)) {
+                    unorderedSeats.push(seat);
+                }
+            }
+
+            if (unorderedSeats.length === 0) {
+                unorderedList.innerHTML = `<p class="text-xs text-emerald-600 font-bold flex items-center"><i class="fa-solid fa-circle-check mr-1.5"></i> 太棒了！全班 50 位座號皆已完成訂餐登記！</p>`;
+            } else {
+                unorderedList.innerHTML = unorderedSeats.map(seat => `
+                    <span onclick="quickFillSeat(${seat})" title="點擊為 ${seat} 號補登記"
+                        class="px-2 py-1 bg-white border border-rose-200 text-rose-700 font-semibold text-xs rounded-md shadow-sm hover:bg-rose-50 cursor-pointer transition">
+                        ${seat} 號
+                    </span>
+                `).join('');
+            }
+
+            // E. 繪製明細列表
+            renderOrdersTable();
+        }
+
+        /**
+         * 8. 繪製與過濾訂單明細列表
+         */
+        function renderOrdersTable() {
+            const tableBody = document.getElementById('ordersDetailTableBody');
+            const searchKeyword = document.getElementById('searchSeatInput').value.trim();
+
+            // 排序與搜尋過濾
+            let filtered = [...orders].sort((a, b) => a.seatNumber - b.seatNumber);
+            if (searchKeyword) {
+                filtered = filtered.filter(o => o.seatNumber.toString().includes(searchKeyword));
+            }
+
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-400 text-xs">
+                            <i class="fa-regular fa-folder-open text-2xl mb-2 block"></i>
+                            目前無訂單資料
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = filtered.map(ord => {
+                const menuItem = MENU_ITEMS.find(m => m.id === ord.itemId) || { name: '未知餐點', price: 0, textBg: 'bg-slate-100 text-slate-700' };
+                const subtotal = menuItem.price * ord.qty;
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-2.5 px-4 font-bold text-slate-800">
+                            <span class="inline-block w-7 h-7 bg-slate-100 text-slate-700 rounded-lg text-center leading-7">${ord.seatNumber}</span>
+                        </td>
+                        <td class="py-2.5 px-4">
+                            <span class="px-2 py-1 rounded border text-xs font-semibold ${menuItem.textBg}">
+                                ${menuItem.name}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-4 text-center text-slate-500 text-xs">$${menuItem.price}</td>
+                        <td class="py-2.5 px-4 text-center font-semibold text-slate-700 text-xs">${ord.qty}</td>
+                        <td class="py-2.5 px-4 text-right font-extrabold text-slate-800 text-xs">$${subtotal}</td>
+                        <td class="py-2.5 px-4 text-center no-print">
+                            <button onclick="deleteOrder(${ord.id})" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="刪除此紀錄">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 刪除條目
+        function deleteOrder(id) {
+            orders = orders.filter(o => o.id !== id);
+            saveToLocalStorage();
+            renderSeatGrid();
+            renderAllReports();
+            showToast("已刪除該筆訂單記錄", "info");
+        }
+
+        /**
+         * 9. 通報與導出工具：複製 LINE 訊息 & 匯出 CSV
+         */
+
+        // 複製班群文字格式
+        function copyGroupMessage() {
+            const className = document.getElementById('classNameInput').value || '本班';
+            const teacher = document.getElementById('teacherInput').value || '小老師';
+            const dateStr = document.getElementById('currentDate').innerText;
+
+            // 計算數據
+            let totalAmount = 0;
+            let totalCount = 0;
+            const summaryMap = {};
+            MENU_ITEMS.forEach(m => summaryMap[m.id] = { name: m.name, price: m.price, count: 0, sub: 0 });
+
+            const orderedSeatsSet = new Set();
+            orders.forEach(o => {
+                orderedSeatsSet.add(o.seatNumber);
+                if (summaryMap[o.itemId]) {
+                    summaryMap[o.itemId].count += o.qty;
+                    summaryMap[o.itemId].sub += o.qty * summaryMap[o.itemId].price;
+                    totalAmount += o.qty * summaryMap[o.itemId].price;
+                    totalCount += o.qty;
+                }
+            });
+
+            const unorderedSeats = [];
+            for (let s = 1; s <= 50; s++) {
+                if (!orderedSeatsSet.has(s)) unorderedSeats.push(s);
+            }
+
+            let msg = `【${className} 午餐訂購彙整表】\n`;
+            msg += `日期：${dateStr} | 負責人：${teacher}\n`;
+            msg += `--------------------------\n`;
+            msg += `【訂餐統計】\n`;
+            MENU_ITEMS.forEach(item => {
+                const st = summaryMap[item.id];
+                if (st.count > 0) {
+                    msg += `・${item.name} ($${item.price}) × ${st.count} 份 = $${st.sub}\n`;
+                }
+            });
+            msg += `--------------------------\n`;
+            msg += `總訂購數：${totalCount} 份\n`;
+            msg += `全班總金額：$${totalAmount.toLocaleString()} 元\n\n`;
+
+            msg += `【未訂餐座號 (共 ${unorderedSeats.length} 人)】\n`;
+            msg += unorderedSeats.length > 0 ? unorderedSeats.join(', ') + '\n' : '全班已全數訂餐完畢！\n';
+            msg += `\n請尚未繳費或訂餐的同學儘速聯繫午餐小老師，謝謝！`;
+
+            // 複製至剪貼簿 (遵循相容性規範)
+            copyTextToClipboard(msg);
+            showToast("已成功複製班群通報格式文字！", "success");
+        }
+
+        // 複製純文字通用函式
+        function copyTextToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('複製失敗:', err);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // 匯出 CSV 檔案
+        function exportCSV() {
+            if (orders.length === 0) {
+                showToast("目前沒有任何訂單可匯出", "error");
+                return;
+            }
+
+            const className = document.getElementById('classNameInput').value || '班級';
+            const dateStr = document.getElementById('currentDate').innerText.replace(/\//g, '-');
+
+            // UTF-8 BOM 避免 Excel 亂碼
+            let csvContent = "\uFEFF";
+            csvContent += "座號,餐點名稱,單價,數量,小計金額,登記時間\n";
+
+            // 依座號排序輸出
+            const sortedOrders = [...orders].sort((a,b) => a.seatNumber - b.seatNumber);
+            sortedOrders.forEach(ord => {
+                const item = MENU_ITEMS.find(m => m.id === ord.itemId) || { name: '未知', price: 0 };
+                const sub = item.price * ord.qty;
+                csvContent += `"${ord.seatNumber}號","${item.name}",${item.price},${ord.qty},${sub},"${ord.timestamp}"\n`;
+            });
+
+            // 下載 CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${className}_午餐訂單彙整_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("已成功匯出 CSV 報表檔！", "success");
+        }
+
+        /**
+         * 10. LocalStorage 暫存機制
+         */
+        function saveToLocalStorage() {
+            localStorage.setItem('hs_lunch_orders', JSON.stringify(orders));
+            localStorage.setItem('hs_lunch_class', document.getElementById('classNameInput').value);
+            localStorage.setItem('hs_lunch_teacher', document.getElementById('teacherInput').value);
+        }
+
+        function loadFromLocalStorage() {
+            const savedOrders = localStorage.getItem('hs_lunch_orders');
+            if (savedOrders) {
+                try {
+                    orders = JSON.parse(savedOrders);
+                } catch (e) {
+                    orders = [];
+                }
+            }
+
+            const savedClass = localStorage.getItem('hs_lunch_class');
+            if (savedClass) document.getElementById('classNameInput').value = savedClass;
+
+            const savedTeacher = localStorage.getItem('hs_lunch_teacher');
+            if (savedTeacher) document.getElementById('teacherInput').value = savedTeacher;
+        }
+
+        // 重置全班資料
+        function confirmResetAll() {
+            openModal(
+                "重置今日訂餐資料",
+                "確定要清空全班今天的訂餐記錄嗎？此動作無法復原。",
+                () => {
+                    orders = [];
+                    saveToLocalStorage();
+                    renderSeatGrid();
+                    renderAllReports();
+                    showToast("已完全清空今天訂餐資料", "info");
+                }
+            );
+        }
+
+        /**
+         * 11. 自訂 Toast & Confirm Modal (絕不使用原生 alert/confirm)
+         */
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            const toastContent = document.getElementById('toastContent');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastMsg = document.getElementById('toastMessage');
+
+            toastMsg.innerText = msg;
+
+            // 樣式調整
+            if (type === 'error') {
+                toastContent.className = "flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg bg-rose-600 text-white font-medium text-sm";
+                toastIcon.className = "fa-solid fa-circle-exclamation";
+            } else if (type === 'info') {
+                toastContent.className = "flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg bg-slate-800 text-white font-medium text-sm";
+                toastIcon.className = "fa-solid fa-circle-info";
+            } else {
+                toastContent.className = "flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg bg-emerald-600 text-white font-medium text-sm";
+                toastIcon.className = "fa-solid fa-circle-check";
+            }
+
+            // 顯示動畫
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2800);
+        }
+
+        function openModal(title, description, onConfirm) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalDescription').innerText = description;
+            confirmCallback = onConfirm;
+
+            const backdrop = document.getElementById('modalBackdrop');
+            const box = document.getElementById('modalBox');
+
+            backdrop.classList.remove('hidden');
+            setTimeout(() => {
+                backdrop.classList.remove('opacity-0');
+                box.classList.remove('scale-95');
+                box.classList.add('scale-100');
+            }, 10);
+
+            document.getElementById('modalConfirmBtn').onclick = () => {
+                if (confirmCallback) confirmCallback();
+                closeModal();
+            };
+        }
+
+        function closeModal() {
+            const backdrop = document.getElementById('modalBackdrop');
+            const box = document.getElementById('modalBox');
+
+            box.classList.remove('scale-100');
+            box.classList.add('scale-95');
+            backdrop.classList.add('opacity-0');
+
+            setTimeout(() => {
+                backdrop.classList.add('hidden');
+            }, 200);
+        }
+    </script>
+</body>
+</html>
